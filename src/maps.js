@@ -4,11 +4,13 @@
 
 let mapsLoaded = false;
 let loadPromise = null;
+let storedApiKey = null;
 
 /**
  * Dynamically loads the Google Maps JavaScript API using the recommended async pattern.
  */
 export function loadGoogleMapsAPI(apiKey) {
+    storedApiKey = apiKey;
     if (mapsLoaded) return Promise.resolve();
     if (loadPromise) return loadPromise;
 
@@ -95,16 +97,24 @@ export function checkStreetViewCoverage(location, radius = 50) {
 
 /**
  * Creates a Street View panorama in the given container.
- * Uses StreetViewService to snap to the nearest available panorama.
- * Includes error detection and retry overlay for failed loads.
+ * For indoor locations with panoId, uses Maps Embed API (iframe) since
+ * user-submitted photospheres aren't accessible via the JS API.
+ * For outdoor locations, uses the JS API directly.
  */
 export async function createStreetView(container, location) {
-    // Clear any previous error overlays
+    // Clear any previous content
     const existingOverlay = container.querySelector('.sv-error-overlay');
     if (existingOverlay) existingOverlay.remove();
+    const existingIframe = container.querySelector('.sv-embed-iframe');
+    if (existingIframe) existingIframe.remove();
+    container.querySelectorAll('.sv-embed-cover').forEach(el => el.remove());
 
-    const panoData = await checkStreetViewCoverage(location, 100);
+    // Indoor locations with panoId: use Maps Embed API iframe
+    if (location.panoId && location.type === 'indoor') {
+        return createEmbedStreetView(container, location);
+    }
 
+    // Outdoor locations: use JS API
     const config = {
         pov: {
             heading: location.heading || 0,
@@ -113,8 +123,8 @@ export async function createStreetView(container, location) {
         zoom: 1,
         disableDefaultUI: false,
         showRoadLabels: false,
-        linksControl: false,      // Disable arrows
-        clickToGo: false,         // Disable click-to-move
+        linksControl: false,
+        clickToGo: false,
         panControl: true,
         zoomControl: true,
         addressControl: false,
@@ -122,6 +132,9 @@ export async function createStreetView(container, location) {
         motionTracking: false,
         motionTrackingControl: false,
     };
+
+    const radius = location.type === 'indoor' ? 15 : 100;
+    const panoData = await checkStreetViewCoverage(location, radius);
 
     if (panoData) {
         config.pano = panoData.location.pano;
@@ -140,6 +153,49 @@ export async function createStreetView(container, location) {
     });
 
     return panorama;
+}
+
+/**
+ * Creates an embedded Street View iframe for user-submitted photospheres.
+ * Uses the standard Google Maps embed format (same as "Share > Embed a map").
+ * No API key required — this format supports user-submitted photospheres.
+ */
+function createEmbedStreetView(container, location) {
+    const heading = location.heading || 0;
+    const pitch = location.pitch || 0;
+    const fov = 0.7820865974627469; // ~75° field of view
+
+    // Standard Google Maps embed format using protocol buffer encoding
+    const embedUrl = `https://www.google.com/maps/embed?pb=`
+        + `!4v${Date.now()}`
+        + `!6m8!1m7`
+        + `!1s${location.panoId}`
+        + `!2m2!1d${location.lat}!2d${location.lng}`
+        + `!3f${heading}`
+        + `!4f${pitch}`
+        + `!5f${fov}`;
+
+    const iframe = document.createElement('iframe');
+    iframe.className = 'sv-embed-iframe';
+    iframe.src = embedUrl;
+    iframe.style.cssText = 'width:100%;height:100%;border:none;position:absolute;top:0;left:0;';
+    iframe.setAttribute('allowfullscreen', '');
+    iframe.setAttribute('loading', 'lazy');
+    iframe.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
+
+    container.style.position = 'relative';
+    container.appendChild(iframe);
+
+    // Solid header bar to cover the location name shown by Google
+    const headerBar = document.createElement('div');
+    headerBar.className = 'sv-embed-cover';
+    headerBar.style.cssText = 'position:absolute;top:0;left:0;right:0;height:65px;'
+        + 'background:#07294D;pointer-events:none;z-index:2;display:flex;align-items:center;padding:0 20px;';
+    headerBar.innerHTML = '<span style="font-family:Space Grotesk,sans-serif;font-size:1.1rem;font-weight:700;color:#FFC600;letter-spacing:-0.02em;">Drexel<span style="color:#f0f2f5;">Guessr</span></span>';
+    container.appendChild(headerBar);
+
+    // Return a mock panorama object so game logic doesn't break
+    return { isEmbed: true };
 }
 
 /**

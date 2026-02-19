@@ -357,7 +357,7 @@ body {
 
 .timer-container {
   position: absolute;
-  top: 20px;
+  top: 14px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 21;
@@ -388,7 +388,7 @@ body {
 
 .round-badge {
   position: absolute;
-  top: 20px;
+  top: 16px;
   right: 20px;
   background: rgba(7, 41, 77, 0.9);
   backdrop-filter: blur(4px);
