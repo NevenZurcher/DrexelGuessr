@@ -164,6 +164,25 @@ export const LOCATIONS = [
     name: "33rd & Market Street (South)",
     hint: "Student life area",
   },
+  // Indoor Locations
+  {
+    lat: 39.95388,
+    lng: -75.18788,
+    heading: 0,
+    pitch: 10,
+    name: "Main Building (Great Court)",
+    hint: "The grandeur of Drexel",
+    type: "indoor",
+  },
+  {
+    lat: 39.95590,
+    lng: -75.19130,
+    heading: 270,
+    pitch: 0,
+    name: "Papadakis Integrated Sciences",
+    hint: "Home of the Biowall",
+    type: "indoor",
+  },
 ];
 
 /**

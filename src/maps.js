@@ -54,34 +54,39 @@ export function checkStreetViewCoverage(location, radius = 50) {
     return new Promise((resolve) => {
         const sv = new google.maps.StreetViewService();
 
-        // 1. Try finding official outdoor imagery first (usually higher quality/reliable)
+        // Use location-specific source preference or default to OUTDOOR (official coverage)
+        const preferredSource = location.type === 'indoor'
+            ? google.maps.StreetViewSource.DEFAULT
+            : google.maps.StreetViewSource.OUTDOOR;
+
         sv.getPanorama(
             {
                 location: { lat: location.lat, lng: location.lng },
                 radius,
                 preference: google.maps.StreetViewPreference.NEAREST,
-                source: google.maps.StreetViewSource.OUTDOOR,
+                source: preferredSource,
             },
             (data, status) => {
                 if (status === google.maps.StreetViewStatus.OK) {
                     resolve(data);
                 } else {
-                    // 2. Fallback to any imagery if outdoor specific fails
-                    sv.getPanorama(
-                        {
-                            location: { lat: location.lat, lng: location.lng },
-                            radius: radius * 1.5, // slightly larger radius for fallback
-                            preference: google.maps.StreetViewPreference.NEAREST,
-                            source: google.maps.StreetViewSource.DEFAULT,
-                        },
-                        (data2, status2) => {
-                            if (status2 === google.maps.StreetViewStatus.OK) {
-                                resolve(data2);
-                            } else {
-                                resolve(null);
+                    // Fallback to DEFAULT if preferred source fails (e.g., no OUTDOOR found)
+                    // But only if we didn't already try DEFAULT
+                    if (preferredSource !== google.maps.StreetViewSource.DEFAULT) {
+                        sv.getPanorama(
+                            {
+                                location: { lat: location.lat, lng: location.lng },
+                                radius: radius * 1.5,
+                                preference: google.maps.StreetViewPreference.NEAREST,
+                                source: google.maps.StreetViewSource.DEFAULT,
+                            },
+                            (data2, status2) => {
+                                resolve(status2 === google.maps.StreetViewStatus.OK ? data2 : null);
                             }
-                        }
-                    );
+                        );
+                    } else {
+                        resolve(null);
+                    }
                 }
             }
         );
