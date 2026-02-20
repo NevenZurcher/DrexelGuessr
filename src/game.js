@@ -102,10 +102,10 @@ export class GameState {
     getRating() {
         const pct = this.totalScore / (MAX_SCORE_PER_ROUND * this.totalRounds);
         if (pct >= 0.95) return { emoji: '🐉', title: 'True Dragon' };
-        if (pct >= 0.80) return { emoji: '🎓', title: 'Campus Expert' };
-        if (pct >= 0.60) return { emoji: '🗺️', title: 'Solid Explorer' };
-        if (pct >= 0.40) return { emoji: '🚶', title: 'Casual Walker' };
-        if (pct >= 0.20) return { emoji: '🧭', title: 'Needs a Map' };
+        if (pct >= 0.80) return { emoji: '🎓', title: "Mario's Best Friend" };
+        if (pct >= 0.60) return { emoji: '🏗️', title: 'Co-op Legend' };
+        if (pct >= 0.40) return { emoji: '🏛️', title: 'Main Building Regular' };
+        if (pct >= 0.20) return { emoji: '🏔️', title: 'Summit Dweller' };
         return { emoji: '😅', title: 'Lost Freshman' };
     }
 }
