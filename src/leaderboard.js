@@ -14,6 +14,7 @@ import {
     orderBy,
     limit,
     serverTimestamp,
+    startAfter,
 } from 'firebase/firestore';
 
 const COLLECTION = 'leaderboard';
@@ -58,17 +59,34 @@ export async function submitScore(user, score, rounds) {
 /**
  * Get top scores from the leaderboard.
  * @param {number} max - Number of scores to fetch
- * @returns {Array<object>} Sorted array of score entries
+ * @param {object} lastVisible - Optional document snapshot to start pagination after
+ * @returns {object} Object containing scores array and the last document snapshot
  */
-export async function getTopScores(max = 10) {
+export async function getTopScores(max = 10, lastVisible = null) {
     try {
-        const q = query(
-            collection(db, COLLECTION),
-            orderBy('score', 'desc'),
-            limit(max)
-        );
+        let q;
+        if (lastVisible) {
+            q = query(
+                collection(db, COLLECTION),
+                orderBy('score', 'desc'),
+                startAfter(lastVisible),
+                limit(max)
+            );
+        } else {
+            q = query(
+                collection(db, COLLECTION),
+                orderBy('score', 'desc'),
+                limit(max)
+            );
+        }
         const snapshot = await getDocs(q);
-        return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        const docs = snapshot.docs;
+        const lastDoc = docs.length > 0 ? docs[docs.length - 1] : null;
+
+        return {
+            scores: docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+            lastDoc
+        };
     } catch (err) {
         console.error('Failed to fetch leaderboard:', err.message);
         throw err;

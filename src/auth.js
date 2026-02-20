@@ -15,6 +15,13 @@ import {
 
 const provider = new GoogleAuthProvider();
 
+/** Detect if running inside a restricted in-app browser */
+export function isWebView() {
+    const rules = ['Instagram', 'FBAN', 'FBAV', 'Snapchat', 'TikTok'];
+    const ua = navigator.userAgent;
+    return rules.some((rule) => ua.includes(rule));
+}
+
 /** Trigger Google Sign-In popup */
 export async function signInWithGoogle() {
     try {

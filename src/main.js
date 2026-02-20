@@ -13,7 +13,7 @@ import {
   metersToFeet,
   checkStreetViewCoverage,
 } from './maps.js';
-import { signInWithGoogle, signInWithEmail, signUpWithEmail, signOutUser, onAuthChange, getCurrentUser } from './auth.js';
+import { signInWithGoogle, signInWithEmail, signUpWithEmail, signOutUser, onAuthChange, getCurrentUser, isWebView } from './auth.js';
 import { submitScore, getTopScores } from './leaderboard.js';
 import { inject } from '@vercel/analytics';
 import html2canvas from 'html2canvas';
@@ -34,6 +34,8 @@ const TIME_LIMIT = 60;
 let isGuest = false;
 let isSignUpMode = false;
 let isProcessing = false;
+let leaderboardLastVisible = null;
+let isFullLeaderboard = false;
 
 // ── Global Error Handling ──────────────────────────────
 window.addEventListener('error', (event) => {
@@ -130,6 +132,8 @@ const els = {
   // Leaderboard
   leaderboardBody: document.getElementById('leaderboard-body'),
   btnLbPlay: document.getElementById('btn-lb-play'),
+  btnLbSeeAll: document.getElementById('btn-lb-see-all'),
+  btnLbLoadMore: document.getElementById('btn-lb-load-more'),
   btnLbBack: document.getElementById('btn-lb-back'),
   // Modal
   modalExit: document.getElementById('modal-exit'),
@@ -175,6 +179,10 @@ function updateUserBadge(user) {
 }
 
 async function handleGoogleSignIn() {
+  if (isWebView()) {
+    alert("Google Sign-In is blocked inside Instagram, Snapchat, Facebook, and TikTok. Please tap the ⋯ menu and select 'Open in System Browser' to play!");
+    return;
+  }
   try {
     els.btnGoogleSignIn.disabled = true;
     const user = await signInWithGoogle();
@@ -681,19 +689,33 @@ async function shareScore() {
     els.totalScore.style.color = '';
     els.btnShareScore.parentElement.style.visibility = 'visible';
 
-    // Download image
-    const link = document.createElement('a');
-    link.download = 'drexelguessr-score.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-
-    // Copy caption to clipboard
+    // Download or Native Share image
     const score = els.totalScore.textContent;
     const caption = `I just scored ${score} on DrexelGuessr! Can you beat me? Play now at drexelguessr.vercel.app\n\n#DrexelGuessr @drexelguessr`;
-    await navigator.clipboard.writeText(caption);
 
-    // Show success toast
-    showShareToast();
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error("Failed to generate image blob");
+
+    const file = new File([blob], 'drexelguessr-score.png', { type: 'image/png' });
+    const shareData = {
+      title: 'DrexelGuessr Score',
+      text: caption,
+      files: [file]
+    };
+
+    if (navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        showShareToast();
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.warn("Web Share failed:", err);
+          await fallbackDownload(canvas, caption);
+        }
+      }
+    } else {
+      await fallbackDownload(canvas, caption);
+    }
   } catch (err) {
     console.error('Error sharing score:', err);
     alert('Failed to generate image. Please try again.');
@@ -702,6 +724,19 @@ async function shareScore() {
     els.btnShareScore.innerHTML = originalBtnText;
     isProcessing = false;
   }
+}
+
+async function fallbackDownload(canvas, caption) {
+  const link = document.createElement('a');
+  link.download = 'drexelguessr-score.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  try {
+    await navigator.clipboard.writeText(caption);
+  } catch (e) {
+    console.warn("Clipboard write failed", e);
+  }
+  showShareToast();
 }
 
 function showShareToast() {
@@ -724,41 +759,110 @@ function showShareToast() {
 }
 
 // ── Leaderboard ────────────────────────────────────────
+
+function renderScoresToHtml(scores, currentUser, startRank = 1) {
+  return scores
+    .map((entry, i) => {
+      const rank = startRank + i;
+      const rankClass = rank <= 3 && !isFullLeaderboard ? ` rank-${rank}` : rank <= 3 ? ` rank-top` : '';
+      const isCurrentUser = currentUser && entry.uid === currentUser.uid;
+      const rowClass = isCurrentUser ? ' class="lb-current-user"' : '';
+      const avatar = entry.photoURL
+        ? `<img src="${entry.photoURL}" alt="" referrerpolicy="no-referrer" />`
+        : `<div style="width:28px;height:28px;border-radius:50%;background:var(--surface);"></div>`;
+
+      return `
+        <tr${rowClass}>
+          <td class="lb-rank${rankClass}">${rank}</td>
+          <td><div class="lb-player">${avatar}<span class="lb-player-name">${entry.displayName}</span></div></td>
+          <td class="lb-score">${entry.score.toLocaleString()}</td>
+        </tr>
+      `;
+    })
+    .join('');
+}
+
 async function showLeaderboard() {
   showScreen('leaderboard');
   els.leaderboardBody.innerHTML = '<tr><td colspan="3" class="lb-loading">Loading...</td></tr>';
+  els.btnLbSeeAll.style.display = '';
+  els.btnLbLoadMore.style.display = 'none';
+  isFullLeaderboard = false;
+  leaderboardLastVisible = null;
 
   try {
-    const scores = await getTopScores(10);
+    const { scores, lastDoc } = await getTopScores(10);
+    leaderboardLastVisible = lastDoc;
     const currentUser = getCurrentUser();
 
     if (scores.length === 0) {
       els.leaderboardBody.innerHTML = '<tr><td colspan="3" class="lb-empty">No scores yet. Be the first!</td></tr>';
+      els.btnLbSeeAll.style.display = 'none';
       return;
     }
 
-    els.leaderboardBody.innerHTML = scores
-      .map((entry, i) => {
-        const rank = i + 1;
-        const rankClass = rank <= 3 ? ` rank-${rank}` : '';
-        const isCurrentUser = currentUser && entry.uid === currentUser.uid;
-        const rowClass = isCurrentUser ? ' class="lb-current-user"' : '';
-        const avatar = entry.photoURL
-          ? `<img src="${entry.photoURL}" alt="" referrerpolicy="no-referrer" />`
-          : `<div style="width:28px;height:28px;border-radius:50%;background:var(--surface);"></div>`;
+    els.leaderboardBody.innerHTML = renderScoresToHtml(scores, currentUser, 1);
 
-        return `
-          <tr${rowClass}>
-            <td class="lb-rank${rankClass}">${rank}</td>
-            <td><div class="lb-player">${avatar}<span class="lb-player-name">${entry.displayName}</span></div></td>
-            <td class="lb-score">${entry.score.toLocaleString()}</td>
-          </tr>
-        `;
-      })
-      .join('');
+    // Hide 'See All' if there are 10 or fewer total scores since they are already fully loaded
+    if (scores.length < 10) {
+      els.btnLbSeeAll.style.display = 'none';
+    }
   } catch (err) {
     console.error('Failed to load leaderboard:', err.message);
     els.leaderboardBody.innerHTML = '<tr><td colspan="3" class="lb-empty">Failed to load leaderboard.</td></tr>';
+  }
+}
+
+async function showFullLeaderboard(loadMore = false) {
+  if (!loadMore) {
+    els.leaderboardBody.innerHTML = '<tr><td colspan="3" class="lb-loading">Loading...</td></tr>';
+    leaderboardLastVisible = null;
+    isFullLeaderboard = true;
+    els.btnLbSeeAll.style.display = 'none';
+  } else {
+    els.btnLbLoadMore.disabled = true;
+    els.btnLbLoadMore.querySelector('span').textContent = 'Loading...';
+  }
+
+  try {
+    const { scores, lastDoc } = await getTopScores(100, leaderboardLastVisible);
+    const currentUser = getCurrentUser();
+
+    if (!loadMore && scores.length === 0) {
+      els.leaderboardBody.innerHTML = '<tr><td colspan="3" class="lb-empty">No scores yet.</td></tr>';
+      els.btnLbLoadMore.style.display = 'none';
+      return;
+    }
+
+    const startRank = loadMore ? els.leaderboardBody.querySelectorAll('tr').length + 1 : 1;
+    const html = renderScoresToHtml(scores, currentUser, startRank);
+
+    if (loadMore) {
+      const loadingRow = els.leaderboardBody.querySelector('.lb-loading');
+      if (loadingRow) loadingRow.remove();
+      els.leaderboardBody.insertAdjacentHTML('beforeend', html);
+    } else {
+      els.leaderboardBody.innerHTML = html;
+    }
+
+    leaderboardLastVisible = lastDoc;
+
+    if (scores.length === 100) {
+      els.btnLbLoadMore.style.display = '';
+    } else {
+      els.btnLbLoadMore.style.display = 'none';
+    }
+
+  } catch (err) {
+    console.error('Failed to load full leaderboard:', err.message);
+    if (!loadMore) {
+      els.leaderboardBody.innerHTML = '<tr><td colspan="3" class="lb-empty">Failed to load leaderboard.</td></tr>';
+    }
+  } finally {
+    if (loadMore) {
+      els.btnLbLoadMore.disabled = false;
+      els.btnLbLoadMore.querySelector('span').textContent = 'Load More';
+    }
   }
 }
 
@@ -833,6 +937,8 @@ els.btnViewLeaderboard.addEventListener('click', showLeaderboard);
 
 // Leaderboard
 els.btnLbPlay.addEventListener('click', startGame);
+els.btnLbSeeAll.addEventListener('click', () => showFullLeaderboard(false));
+els.btnLbLoadMore.addEventListener('click', () => showFullLeaderboard(true));
 els.btnLbBack.addEventListener('click', () => showScreen('start'));
 
 // Modal
