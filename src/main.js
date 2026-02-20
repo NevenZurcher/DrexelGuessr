@@ -727,16 +727,72 @@ async function shareScore() {
 }
 
 async function fallbackDownload(canvas, caption) {
-  const link = document.createElement('a');
-  link.download = 'drexelguessr-score.png';
-  link.href = canvas.toDataURL('image/png');
-  link.click();
   try {
     await navigator.clipboard.writeText(caption);
   } catch (e) {
     console.warn("Clipboard write failed", e);
   }
-  showShareToast();
+
+  if (isWebView()) {
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100vw';
+    overlay.style.height = '100vh';
+    overlay.style.backgroundColor = 'rgba(10, 14, 23, 0.95)';
+    overlay.style.zIndex = '9999';
+    overlay.style.display = 'flex';
+    overlay.style.flexDirection = 'column';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+    overlay.style.padding = '20px';
+    overlay.style.boxSizing = 'border-box';
+    overlay.style.textAlign = 'center';
+
+    const title = document.createElement('h2');
+    title.textContent = 'Caption Copied!';
+    title.style.color = '#fff';
+    title.style.margin = '0 0 10px 0';
+
+    const subtitle = document.createElement('p');
+    subtitle.innerHTML = 'Tap and hold the image below to save it!<br/><span style="font-size: 0.8em; opacity: 0.8;">Tap the background to close</span>';
+    subtitle.style.color = 'var(--text-muted)';
+    subtitle.style.marginBottom = '30px';
+
+    const img = document.createElement('img');
+    img.src = canvas.toDataURL('image/png');
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = '60vh';
+    img.style.borderRadius = '12px';
+    img.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+    img.style.objectFit = 'contain';
+
+    const btnClose = document.createElement('button');
+    btnClose.className = 'btn-primary';
+    btnClose.textContent = 'Done';
+    btnClose.style.marginTop = '30px';
+    btnClose.style.width = '100%';
+    btnClose.style.maxWidth = '300px';
+    btnClose.onclick = () => overlay.remove();
+
+    overlay.onclick = (e) => {
+      if (e.target === overlay) overlay.remove();
+    };
+
+    overlay.appendChild(title);
+    overlay.appendChild(subtitle);
+    overlay.appendChild(img);
+    overlay.appendChild(btnClose);
+
+    document.body.appendChild(overlay);
+  } else {
+    const link = document.createElement('a');
+    link.download = 'drexelguessr-score.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showShareToast();
+  }
 }
 
 function showShareToast() {
