@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /leaderboard/{userId} {
+      // Allow reading by anyone
+      allow read: if true;
+      
+      // Allow writing only if authenticated and user is updating their own document
+      allow write: if request.auth != null && request.auth.uid == userId
+                   // Validate data schema
+                   && request.resource.data.name is string
+                   && request.resource.data.name.size() > 0
+                   && request.resource.data.name.size() <= 30
+                   && request.resource.data.score is number
+                   && request.resource.data.score >= 0
+                   && request.resource.data.score <= 25000
+                   // Ensure timestamp is present (though we can't strictly enforce serverTimestamp() here easily without more complex logic, 
+                   // verifying it's a timestamp is a good start)
+                   && request.resource.data.timestamp is timestamp;
+    }
+  }
+}
