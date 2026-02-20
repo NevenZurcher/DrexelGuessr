@@ -22,6 +22,7 @@ let guessMarker = null;
 let guessPos = null;
 let mapExpanded = false;
 let timerInterval = null;
+let currentTimeLeft = 0;
 const TIME_LIMIT = 60;
 
 // ── DOM Elements ───────────────────────────────────────
@@ -146,21 +147,21 @@ async function startGame() {
 
 // ── Timer Logic ────────────────────────────────────────
 function startTimer() {
-  let timeLeft = TIME_LIMIT;
-  els.timer.textContent = `${timeLeft}s`;
+  currentTimeLeft = TIME_LIMIT;
+  els.timer.textContent = `${currentTimeLeft}s`;
   els.timer.classList.remove('warning');
 
   if (timerInterval) clearInterval(timerInterval);
 
   timerInterval = setInterval(() => {
-    timeLeft--;
-    els.timer.textContent = `${timeLeft}s`;
+    currentTimeLeft--;
+    els.timer.textContent = `${currentTimeLeft}s`;
 
-    if (timeLeft <= 10) {
+    if (currentTimeLeft <= 10) {
       els.timer.classList.add('warning');
     }
 
-    if (timeLeft <= 0) {
+    if (currentTimeLeft <= 0) {
       clearInterval(timerInterval);
       submitGuess(); // Auto-submit with null guessPos
     }
@@ -243,7 +244,7 @@ function submitGuess() {
     // If called from button, guessPos is set
   }
 
-  const result = game.submitGuess(guessPos);
+  const result = game.submitGuess(guessPos, currentTimeLeft);
   showResult(result);
 }
 

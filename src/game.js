@@ -6,7 +6,9 @@ import { haversineDistance } from './maps.js';
 
 const ROUNDS_PER_GAME = 5;
 const MAX_SCORE_PER_ROUND = 5000;
-const DISTANCE_DECAY = 50; // meters — how quickly score drops with distance
+const DISTANCE_DECAY = 150; // meters — how quickly score drops with distance
+const TOTAL_TIME = 60;     // seconds per round
+const GRACE_PERIOD = 10;   // seconds before time penalty kicks in
 
 export class GameState {
     constructor() {
@@ -52,9 +54,10 @@ export class GameState {
     /**
      * Submit a guess for the current round.
      * @param {{ lat: number, lng: number }} guessPos
+     * @param {number} timeRemaining - seconds left on timer
      * @returns {{ distance: number, score: number, location: object }}
      */
-    submitGuess(guessPos) {
+    submitGuess(guessPos, timeRemaining = 0) {
         const location = this.getCurrentLocation();
         const actualPos = { lat: location.lat, lng: location.lng };
 
@@ -64,8 +67,15 @@ export class GameState {
         if (guessPos) {
             // Calculate distance in meters
             distance = haversineDistance(guessPos, actualPos);
-            // Calculate score: exponential decay
-            score = Math.round(MAX_SCORE_PER_ROUND * Math.exp(-distance / DISTANCE_DECAY));
+
+            // Distance score: exponential decay (more relaxed)
+            const distanceScore = MAX_SCORE_PER_ROUND * Math.exp(-distance / DISTANCE_DECAY);
+
+            // Time multiplier: first 10s are free, then linearly decreases
+            const effectiveTimeWindow = TOTAL_TIME - GRACE_PERIOD; // 50s
+            const timeMultiplier = Math.min(1, timeRemaining / effectiveTimeWindow);
+
+            score = Math.round(distanceScore * timeMultiplier);
         }
 
         const roundResult = {

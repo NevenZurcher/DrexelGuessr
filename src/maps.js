@@ -133,7 +133,7 @@ export async function createStreetView(container, location) {
         motionTrackingControl: false,
     };
 
-    const radius = location.type === 'indoor' ? 15 : 100;
+    const radius = location.type === 'indoor' ? 30 : 100;
     const panoData = await checkStreetViewCoverage(location, radius);
 
     if (panoData) {
@@ -180,7 +180,6 @@ function createEmbedStreetView(container, location) {
     iframe.src = embedUrl;
     iframe.style.cssText = 'width:100%;height:100%;border:none;position:absolute;top:0;left:0;';
     iframe.setAttribute('allowfullscreen', '');
-    iframe.setAttribute('loading', 'lazy');
     iframe.setAttribute('referrerpolicy', 'no-referrer-when-downgrade');
 
     container.style.position = 'relative';
