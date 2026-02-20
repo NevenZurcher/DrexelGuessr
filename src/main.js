@@ -745,39 +745,67 @@ async function fallbackDownload(canvas, caption) {
     // Create Instruction Overlay
     instructionBox.id = 'screenshot-instruction';
     instructionBox.style.position = 'fixed';
-    instructionBox.style.top = '20px';
-    instructionBox.style.left = '50%';
-    instructionBox.style.transform = 'translateX(-50%)';
+    instructionBox.style.top = '0';
+    instructionBox.style.left = '0';
+    instructionBox.style.width = '100vw';
+    instructionBox.style.height = '100vh';
+    instructionBox.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
     instructionBox.style.zIndex = '10000';
-    instructionBox.style.width = '90%';
-    instructionBox.style.maxWidth = '400px';
-    instructionBox.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
-    instructionBox.style.border = '2px solid var(--gold)';
-    instructionBox.style.borderRadius = '16px';
-    instructionBox.style.padding = '20px';
+    instructionBox.style.display = 'flex';
+    instructionBox.style.flexDirection = 'column';
+    instructionBox.style.justifyContent = 'center';
+    instructionBox.style.alignItems = 'center';
+    instructionBox.style.padding = '30px';
     instructionBox.style.textAlign = 'center';
-    instructionBox.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
-    instructionBox.style.position = 'fixed';
+    instructionBox.style.boxSizing = 'border-box';
 
     instructionBox.innerHTML = `
-      <div style="font-size: 1.2rem; color: #fff; font-weight: 700; margin-bottom: 8px;">📸 Screenshot Mode</div>
-      <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
-        Instagram blocked the auto-save. <br/>
-        <strong>Screenshot this screen now</strong> to share your score!
+      <div style="font-size: 1.5rem; color: var(--gold); font-weight: 700; margin-bottom: 12px; font-family: 'Space Grotesk', sans-serif;">📸 Clean View Mode</div>
+      <div style="font-size: 1rem; color: #fff; margin-bottom: 24px; line-height: 1.5;">
+        Instagram/Facebook blocked the auto-save. <br/>
+        We've hidden the buttons for you—<strong>take a manual screenshot</strong> of the scorecard now!
       </div>
-      <button class="btn-primary" id="btn-exit-screenshot" style="width: 100%; padding: 12px;">Close</button>
+      <button class="btn-primary" id="btn-got-it" style="width: 100%; max-width: 200px; padding: 14px;">Got it</button>
     `;
 
     document.body.appendChild(instructionBox);
 
+    // Create a tiny floating exit button that appears AFTER they click "Got it"
+    const exitBtn = document.createElement('button');
+    exitBtn.innerHTML = '✕';
+    exitBtn.style.position = 'fixed';
+    exitBtn.style.top = '15px';
+    exitBtn.style.right = '15px';
+    exitBtn.style.width = '36px';
+    exitBtn.style.height = '36px';
+    exitBtn.style.borderRadius = '50%';
+    exitBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+    exitBtn.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+    exitBtn.style.color = '#fff';
+    exitBtn.style.fontSize = '18px';
+    exitBtn.style.zIndex = '9999';
+    exitBtn.style.display = 'none';
+    exitBtn.style.cursor = 'pointer';
+    exitBtn.style.backdropFilter = 'blur(5px)';
+
+    document.body.appendChild(exitBtn);
+
     // Make sure score text stays gold
     els.totalScore.style.color = '#FFC600';
 
-    document.getElementById('btn-exit-screenshot').onclick = () => {
+    const restoreUI = () => {
       instructionBox.remove();
+      exitBtn.remove();
       summaryButtons.style.display = originalDisplay;
       els.totalScore.style.color = '';
     };
+
+    document.getElementById('btn-got-it').onclick = () => {
+      instructionBox.style.display = 'none';
+      exitBtn.style.display = 'block';
+    };
+
+    exitBtn.onclick = restoreUI;
   } else {
     // Standard browser download
     const link = document.createElement('a');
