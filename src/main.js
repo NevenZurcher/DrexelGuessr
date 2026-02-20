@@ -117,6 +117,10 @@ const els = {
   // Game (icons)
   iconExpand: document.getElementById('icon-expand'),
   iconCollapse: document.getElementById('icon-collapse'),
+  // Debug
+  debugPanel: document.getElementById('debug-panel'),
+  debugLocationName: document.getElementById('debug-location-name'),
+  btnDebugSkip: document.getElementById('btn-debug-skip'),
   // Leaderboard
   leaderboardBody: document.getElementById('leaderboard-body'),
   btnLbPlay: document.getElementById('btn-lb-play'),
@@ -280,16 +284,27 @@ function animateValue(el, start, end, duration = 1000) {
 }
 
 // ── Pre-validate locations for Street View coverage ───
-async function getValidLocations(count = 5) {
-  const shuffled = [...LOCATIONS].sort(() => Math.random() - 0.5);
-  const valid = [];
+const DEBUG_ALL_LOCATIONS = false;
 
-  for (const loc of shuffled) {
-    if (valid.length >= count) break;
+async function getValidLocations(count = 5) {
+  const locationsToProcess = DEBUG_ALL_LOCATIONS
+    ? [...LOCATIONS]
+    : [...LOCATIONS].sort(() => Math.random() - 0.5);
+
+  const valid = [];
+  const targetCount = DEBUG_ALL_LOCATIONS ? locationsToProcess.length : count;
+
+  for (const loc of locationsToProcess) {
+    if (valid.length >= targetCount) break;
 
     // Validate data structure
     if (!loc || typeof loc.lat !== 'number' || typeof loc.lng !== 'number') {
       console.warn('Invalid location data found:', loc);
+      continue;
+    }
+
+    if (loc.panoId) {
+      valid.push(loc);
       continue;
     }
 
@@ -322,9 +337,12 @@ async function startGame() {
     await loadGoogleMapsAPI(apiKey);
 
     // Pre-validate that all locations have Street View coverage
-    const validLocations = await getValidLocations(5);
+    const count = DEBUG_ALL_LOCATIONS ? LOCATIONS.length : 5;
+    const validLocations = await getValidLocations(count);
 
-    if (validLocations.length < 5) {
+    if (DEBUG_ALL_LOCATIONS) {
+      alert(`Debug Mode: Loading all ${validLocations.length} locations in sequence.`);
+    } else if (validLocations.length < 5) {
       alert(`Only found ${validLocations.length} locations with Street View coverage. Starting with those.`);
     }
 
@@ -384,6 +402,21 @@ async function startRound() {
   // Update round badge
   els.roundBadge.textContent = game.getRoundDisplay();
 
+  // Debug UI
+  if (DEBUG_ALL_LOCATIONS) {
+    els.debugPanel.style.display = 'block';
+    els.debugLocationName.textContent = location.name;
+
+    // Bind skip button exactly once
+    els.btnDebugSkip.onclick = () => {
+      // Force submit guess early indicating a skip
+      guessPos = null;
+      submitGuess(true); // pass true flag to indicate skip
+    };
+  } else {
+    els.debugPanel.style.display = 'none';
+  }
+
   // Reset guess button
   els.btnGuess.disabled = true;
   els.btnGuess.querySelector('span').textContent = 'Place your pin first';
@@ -435,7 +468,7 @@ async function startRound() {
 }
 
 // ── Submit Guess ───────────────────────────────────────
-function submitGuess() {
+function submitGuess(isSkip = false) {
   if (isProcessing) return;
   isProcessing = true;
   stopTimer();
@@ -447,7 +480,7 @@ function submitGuess() {
   setTimeout(() => {
     try {
       const result = game.submitGuess(guessPos, currentTimeLeft);
-      showResult(result);
+      showResult(result, isSkip);
     } catch (err) {
       console.error('Error submitting guess:', err.message);
       // If error, re-enable button (though timer stopped, so maybe just alert)
@@ -461,7 +494,7 @@ function submitGuess() {
 }
 
 // ── Show Result ────────────────────────────────────────
-function showResult(result) {
+function showResult(result, isSkip = false) {
   showScreen('result');
 
   // Create result map and draw line
@@ -479,6 +512,9 @@ function showResult(result) {
   let distFeet = 0;
   if (result.distance === Infinity) {
     els.resultDistance.textContent = "Time's Up!";
+    els.resultDistance.style.fontSize = "1.5rem";
+  } else if (isSkip === true) {
+    els.resultDistance.innerHTML = "<span style='color:#ef4444'>Skipped</span>";
     els.resultDistance.style.fontSize = "1.5rem";
   } else {
     distFeet = Math.round(metersToFeet(result.distance));
@@ -527,9 +563,6 @@ async function handleNext() {
   } finally {
     isProcessing = false;
     els.btnNext.disabled = false;
-    // Reset guess button state for next round
-    els.btnGuess.disabled = false;
-    els.btnGuess.querySelector('span').textContent = 'Submit Guess';
   }
 }
 
@@ -554,8 +587,10 @@ async function showSummary() {
 
   game.rounds.forEach((round, i) => {
     // Draw line for each round
-    drawResultLine(sMap, round.guessPos, round.actualPos);
-    bounds.extend(new google.maps.LatLng(round.guessPos.lat, round.guessPos.lng));
+    if (round.guessPos) {
+      drawResultLine(sMap, round.guessPos, round.actualPos);
+      bounds.extend(new google.maps.LatLng(round.guessPos.lat, round.guessPos.lng));
+    }
     bounds.extend(new google.maps.LatLng(round.actualPos.lat, round.actualPos.lng));
   });
 
@@ -569,7 +604,7 @@ async function showSummary() {
       <div class="round-row-left">
         <span class="round-num">${r.round}</span>
         <span class="round-name">${r.location.name}</span>
-        <span class="round-distance">${r.distance === Infinity ? "Time's Up" : Math.round(metersToFeet(r.distance)) + " ft"}</span>
+        <span class="round-distance">${r.distance === Infinity ? (r.score === 0 ? "<span style='color:#ef4444'>Skipped/Time's Up</span>" : "Time's Up") : Math.round(metersToFeet(r.distance)) + " ft"}</span>
       </div>
       <span class="round-score">${r.score.toLocaleString()}</span>
     </div>
@@ -728,5 +763,11 @@ els.btnConfirmExit.addEventListener('click', confirmExit);
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && screens.game.classList.contains('active') && guessPos) {
     submitGuess();
+  } else if (e.key === ' ' && DEBUG_ALL_LOCATIONS && screens.game.classList.contains('active')) {
+    e.preventDefault();
+    submitGuess(true); // Skip
+  } else if (e.key === ' ' && screens.result.classList.contains('active')) {
+    e.preventDefault();
+    handleNext();
   }
 });

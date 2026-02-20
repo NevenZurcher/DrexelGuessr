@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DrexelGuessr — Campus GeoGuessr</title>
+    <title>DrexelGuessr</title>
     <meta name="description" content="Test your knowledge of Drexel University's campus in this GeoGuessr-style game. Explore Street View and guess the location!" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -85,6 +85,10 @@
           <div class="timer" id="timer">60s</div>
         </div>
         <div class="round-badge" id="round-badge">Round 1 / 5</div>
+        <div id="debug-panel" class="debug-panel" style="display:none; position:absolute; top:70px; left:16px; background:rgba(0,0,0,0.8); color:#f0f2f5; padding:12px; border-radius:8px; font-family:monospace; z-index:22;">
+          <div id="debug-location-name" style="margin-bottom:8px; font-weight:bold;">Location Name</div>
+          <button id="btn-debug-skip" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Skip Round (Space)</button>
+        </div>
       </div>
       
       <div id="streetview-container"></div>

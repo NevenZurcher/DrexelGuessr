@@ -1171,6 +1171,22 @@ body {
 }
 
 /* ========================================
+   CUSTOM UI OVERLAYS
+   ======================================== */
+.sv-embed-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: -0.02em;
+  margin-left: 50px;
+}
+
+.sv-embed-title span {
+  color: var(--text);
+}
+
+/* ========================================
    RESPONSIVE
    ======================================== */
 @media (max-width: 768px) {
@@ -1226,6 +1242,10 @@ body {
   .dragon-icon img {
     width: 60px;
     height: 60px;
+  }
+
+  .sv-embed-title {
+    display: none;
   }
 
   .rules-card {

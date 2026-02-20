@@ -152,6 +152,14 @@ export async function createStreetView(container, location) {
         }
     });
 
+    // Solid header bar to cover the location name shown by Google for ALL views
+    const headerBar = document.createElement('div');
+    headerBar.className = 'sv-embed-cover';
+    headerBar.style.cssText = 'position:absolute;top:0;left:0;right:0;height:65px;'
+        + 'background:#07294D;pointer-events:none;z-index:2;display:flex;align-items:center;padding:0 20px;';
+    headerBar.innerHTML = '<span class="sv-embed-title">Drexel<span>Guessr</span></span>';
+    container.appendChild(headerBar);
+
     return panorama;
 }
 
@@ -164,6 +172,9 @@ function createEmbedStreetView(container, location) {
     const heading = location.heading || 0;
     const pitch = location.pitch || 0;
     const fov = 0.7820865974627469; // ~75° field of view
+
+    // Clear any previous container content completely for iframes
+    container.innerHTML = '';
 
     // Standard Google Maps embed format using protocol buffer encoding
     const embedUrl = `https://www.google.com/maps/embed?pb=`
@@ -190,7 +201,7 @@ function createEmbedStreetView(container, location) {
     headerBar.className = 'sv-embed-cover';
     headerBar.style.cssText = 'position:absolute;top:0;left:0;right:0;height:65px;'
         + 'background:#07294D;pointer-events:none;z-index:2;display:flex;align-items:center;padding:0 20px;';
-    headerBar.innerHTML = '<span style="font-family:Space Grotesk,sans-serif;font-size:1.1rem;font-weight:700;color:#FFC600;letter-spacing:-0.02em;">Drexel<span style="color:#f0f2f5;">Guessr</span></span>';
+    headerBar.innerHTML = '<span class="sv-embed-title">Drexel<span>Guessr</span></span>';
     container.appendChild(headerBar);
 
     // Return a mock panorama object so game logic doesn't break
