@@ -121,6 +121,10 @@ const els = {
   leaderboardBody: document.getElementById('leaderboard-body'),
   btnLbPlay: document.getElementById('btn-lb-play'),
   btnLbBack: document.getElementById('btn-lb-back'),
+  // Modal
+  modalExit: document.getElementById('modal-exit'),
+  btnCancelExit: document.getElementById('btn-cancel-exit'),
+  btnConfirmExit: document.getElementById('btn-confirm-exit'),
 };
 
 // ── Screen Management ──────────────────────────────────
@@ -677,10 +681,17 @@ function toggleMapSize() {
 
 // ── Exit Game ──────────────────────────────────────────
 function exitGame() {
-  if (confirm('Are you sure you want to exit the current game?')) {
-    stopTimer();
-    showScreen('start');
-  }
+  els.modalExit.style.display = 'flex';
+}
+
+function confirmExit() {
+  els.modalExit.style.display = 'none';
+  stopTimer();
+  showScreen('start');
+}
+
+function cancelExit() {
+  els.modalExit.style.display = 'none';
 }
 
 // ── Event Listeners ────────────────────────────────────
@@ -708,6 +719,10 @@ els.btnViewLeaderboard.addEventListener('click', showLeaderboard);
 // Leaderboard
 els.btnLbPlay.addEventListener('click', startGame);
 els.btnLbBack.addEventListener('click', () => showScreen('start'));
+
+// Modal
+els.btnCancelExit.addEventListener('click', cancelExit);
+els.btnConfirmExit.addEventListener('click', confirmExit);
 
 // Keyboard shortcut: Enter to submit guess
 document.addEventListener('keydown', (e) => {
