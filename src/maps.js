@@ -283,8 +283,13 @@ export function createGuessMap(container) {
             },
             {
                 featureType: 'poi',
-                elementType: 'labels.text.fill',
-                stylers: [{ color: '#6b7d99' }],
+                elementType: 'labels',
+                stylers: [{ visibility: 'off' }],
+            },
+            {
+                featureType: 'transit',
+                elementType: 'labels',
+                stylers: [{ visibility: 'off' }],
             },
             {
                 featureType: 'poi.park',
