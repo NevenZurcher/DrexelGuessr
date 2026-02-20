@@ -577,11 +577,32 @@ async function showSummary() {
   const user = getCurrentUser();
   if (user && !isGuest) {
     try {
-      await submitScore(user, game.totalScore, game.rounds);
+      const result = await submitScore(user, game.totalScore, game.rounds);
+      if (result.updated) {
+        showHighScoreToast();
+      }
     } catch (err) {
       console.error('Failed to submit score:', err.message);
+      alert(`Failed to save score: ${err.message}`);
     }
   }
+}
+
+function showHighScoreToast() {
+  const toast = document.createElement('div');
+  toast.className = 'highscore-toast';
+  toast.innerHTML = '<span>🏆</span> New High Score!';
+  els.summaryRating.parentElement.appendChild(toast);
+
+  // Trigger reflow
+  toast.offsetHeight;
+  toast.classList.add('show');
+
+  // Remove after animation
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 500);
+  }, 4000);
 }
 
 // ── Leaderboard ────────────────────────────────────────

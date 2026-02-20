@@ -13,6 +13,7 @@ import {
     query,
     orderBy,
     limit,
+    serverTimestamp,
 } from 'firebase/firestore';
 
 const COLLECTION = 'leaderboard';
@@ -41,10 +42,10 @@ export async function submitScore(user, score, rounds) {
             rounds: rounds.map((r) => ({
                 round: r.round,
                 locationName: r.location.name,
-                distance: r.distance,
+                distance: Number.isFinite(r.distance) ? r.distance : -1,
                 score: r.score,
             })),
-            timestamp: new Date().toISOString(),
+            timestamp: serverTimestamp(),
         });
 
         return { updated: true };
