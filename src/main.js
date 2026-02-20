@@ -760,13 +760,37 @@ async function fallbackDownload(canvas, caption) {
     subtitle.style.color = 'var(--text-muted)';
     subtitle.style.marginBottom = '30px';
 
+    const imgContainer = document.createElement('div');
+    imgContainer.style.position = 'relative';
+    imgContainer.style.width = '100%';
+    imgContainer.style.display = 'flex';
+    imgContainer.style.justifyContent = 'center';
+
+    const loadingText = document.createElement('div');
+    loadingText.textContent = 'Preparing image...';
+    loadingText.style.color = 'var(--gold)';
+    loadingText.style.fontSize = '0.9rem';
+
     const img = document.createElement('img');
-    img.src = canvas.toDataURL('image/png');
+    img.style.display = 'none'; // Hide until loaded
     img.style.maxWidth = '100%';
     img.style.maxHeight = '60vh';
     img.style.borderRadius = '12px';
     img.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
     img.style.objectFit = 'contain';
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        img.src = url;
+        img.onload = () => {
+          loadingText.style.display = 'none';
+          img.style.display = 'block';
+        };
+      } else {
+        loadingText.textContent = 'Failed to load image. Please try again.';
+      }
+    }, 'image/png');
 
     const btnClose = document.createElement('button');
     btnClose.className = 'btn-primary';
@@ -782,7 +806,9 @@ async function fallbackDownload(canvas, caption) {
 
     overlay.appendChild(title);
     overlay.appendChild(subtitle);
-    overlay.appendChild(img);
+    imgContainer.appendChild(loadingText);
+    imgContainer.appendChild(img);
+    overlay.appendChild(imgContainer);
     overlay.appendChild(btnClose);
 
     document.body.appendChild(overlay);
