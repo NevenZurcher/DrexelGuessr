@@ -12,6 +12,8 @@
     "vite": "^7.3.1"
   },
   "dependencies": {
-    "firebase": "^12.9.0"
+    "@vercel/analytics": "^1.6.1",
+    "firebase": "^12.9.0",
+    "html2canvas": "^1.4.1"
   }
 }

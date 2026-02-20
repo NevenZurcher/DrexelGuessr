@@ -15,6 +15,11 @@ import {
 } from './maps.js';
 import { signInWithGoogle, signInWithEmail, signUpWithEmail, signOutUser, onAuthChange, getCurrentUser } from './auth.js';
 import { submitScore, getTopScores } from './leaderboard.js';
+import { inject } from '@vercel/analytics';
+import html2canvas from 'html2canvas';
+
+// Initialize Vercel Analytics
+inject();
 
 // ── State ──────────────────────────────────────────────
 const game = new GameState();
@@ -108,6 +113,7 @@ const els = {
   resultScore: document.getElementById('result-score'),
   scoreBar: document.getElementById('score-bar'),
   // Summary
+  btnShareScore: document.getElementById('btn-share-score'),
   btnPlayAgain: document.getElementById('btn-play-again'),
   btnViewLeaderboard: document.getElementById('btn-view-leaderboard'),
   summaryMap: document.getElementById('summary-map'),
@@ -644,6 +650,79 @@ function showHighScoreToast() {
   }, 4000);
 }
 
+async function shareScore() {
+  if (isProcessing) return;
+  isProcessing = true;
+  const originalBtnText = els.btnShareScore.innerHTML;
+  els.btnShareScore.innerHTML = '<span>Generating...</span>';
+
+  try {
+    // Hide buttons for screenshot
+    els.btnShareScore.parentElement.style.visibility = 'hidden';
+
+    // html2canvas workaround for background-clip: text gradients
+    els.totalScore.style.background = 'none';
+    els.totalScore.style.webkitBackgroundClip = 'initial';
+    els.totalScore.style.webkitTextFillColor = 'initial';
+    els.totalScore.style.backgroundClip = 'initial';
+    els.totalScore.style.color = '#FFC600';
+
+    // Take snapshot
+    const canvas = await html2canvas(document.querySelector('.summary-card'), {
+      backgroundColor: '#0a0e17',
+      scale: window.devicePixelRatio || 2, // High res for sharper images
+    });
+
+    // Restore styling and buttons
+    els.totalScore.style.background = '';
+    els.totalScore.style.webkitBackgroundClip = '';
+    els.totalScore.style.webkitTextFillColor = '';
+    els.totalScore.style.backgroundClip = '';
+    els.totalScore.style.color = '';
+    els.btnShareScore.parentElement.style.visibility = 'visible';
+
+    // Download image
+    const link = document.createElement('a');
+    link.download = 'drexelguessr-score.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+
+    // Copy caption to clipboard
+    const score = els.totalScore.textContent;
+    const caption = `I just scored ${score} on DrexelGuessr! Can you beat me? Play now at drexelguessr.vercel.app\n\n#DrexelGuessr @drexelguessr`;
+    await navigator.clipboard.writeText(caption);
+
+    // Show success toast
+    showShareToast();
+  } catch (err) {
+    console.error('Error sharing score:', err);
+    alert('Failed to generate image. Please try again.');
+    els.btnShareScore.parentElement.style.visibility = 'visible';
+  } finally {
+    els.btnShareScore.innerHTML = originalBtnText;
+    isProcessing = false;
+  }
+}
+
+function showShareToast() {
+  const toast = document.createElement('div');
+  toast.className = 'highscore-toast';
+  toast.style.width = 'max-content';
+  toast.style.maxWidth = '90vw';
+  toast.style.lineHeight = '1.4';
+  toast.style.padding = '12px 20px';
+  toast.innerHTML = '<span>📸</span> <div style="display:inline-block; vertical-align:middle; text-align:left;">Image Saved!<br><span style="font-size: 0.8em; opacity: 0.8; font-weight: normal;">Caption copied. Post to your story & tag us!</span></div>';
+  els.summaryRating.parentElement.appendChild(toast);
+
+  toast.offsetHeight;
+  toast.classList.add('show');
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 500);
+  }, 5000);
+}
+
 // ── Leaderboard ────────────────────────────────────────
 async function showLeaderboard() {
   showScreen('leaderboard');
@@ -748,6 +827,7 @@ els.btnNext.addEventListener('click', handleNext);
 els.btnToggleMap.addEventListener('click', toggleMapSize);
 
 // Summary
+els.btnShareScore.addEventListener('click', shareScore);
 els.btnPlayAgain.addEventListener('click', playAgain);
 els.btnViewLeaderboard.addEventListener('click', showLeaderboard);
 
