@@ -734,85 +734,52 @@ async function fallbackDownload(canvas, caption) {
   }
 
   if (isWebView()) {
-    const overlay = document.createElement('div');
-    overlay.style.position = 'fixed';
-    overlay.style.top = '0';
-    overlay.style.left = '0';
-    overlay.style.width = '100vw';
-    overlay.style.height = '100vh';
-    overlay.style.backgroundColor = 'rgba(10, 14, 23, 0.95)';
-    overlay.style.zIndex = '9999';
-    overlay.style.display = 'flex';
-    overlay.style.flexDirection = 'column';
-    overlay.style.justifyContent = 'center';
-    overlay.style.alignItems = 'center';
-    overlay.style.padding = '20px';
-    overlay.style.boxSizing = 'border-box';
-    overlay.style.textAlign = 'center';
+    // ── Clean View Mode (Bypass Instagram/FB download blocks) ──
+    const summaryButtons = document.querySelector('.summary-buttons');
+    const instructionBox = document.createElement('div');
 
-    const title = document.createElement('h2');
-    title.textContent = 'Caption Copied!';
-    title.style.color = '#fff';
-    title.style.margin = '0 0 10px 0';
+    // Save original state
+    const originalDisplay = summaryButtons.style.display;
+    summaryButtons.style.display = 'none';
 
-    const subtitle = document.createElement('p');
-    subtitle.innerHTML = 'Tap and hold the image below to save it!<br/><span style="font-size: 0.8em; opacity: 0.8;">Tap the background to close</span>';
-    subtitle.style.color = 'var(--text-muted)';
-    subtitle.style.marginBottom = '30px';
+    // Create Instruction Overlay
+    instructionBox.id = 'screenshot-instruction';
+    instructionBox.style.position = 'fixed';
+    instructionBox.style.top = '20px';
+    instructionBox.style.left = '50%';
+    instructionBox.style.transform = 'translateX(-50%)';
+    instructionBox.style.zIndex = '10000';
+    instructionBox.style.width = '90%';
+    instructionBox.style.maxWidth = '400px';
+    instructionBox.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+    instructionBox.style.border = '2px solid var(--gold)';
+    instructionBox.style.borderRadius = '16px';
+    instructionBox.style.padding = '20px';
+    instructionBox.style.textAlign = 'center';
+    instructionBox.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+    instructionBox.style.position = 'fixed';
 
-    const imgContainer = document.createElement('div');
-    imgContainer.style.position = 'relative';
-    imgContainer.style.width = '100%';
-    imgContainer.style.display = 'flex';
-    imgContainer.style.justifyContent = 'center';
+    instructionBox.innerHTML = `
+      <div style="font-size: 1.2rem; color: #fff; font-weight: 700; margin-bottom: 8px;">📸 Screenshot Mode</div>
+      <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px;">
+        Instagram blocked the auto-save. <br/>
+        <strong>Screenshot this screen now</strong> to share your score!
+      </div>
+      <button class="btn-primary" id="btn-exit-screenshot" style="width: 100%; padding: 12px;">Close</button>
+    `;
 
-    const loadingText = document.createElement('div');
-    loadingText.textContent = 'Preparing image...';
-    loadingText.style.color = 'var(--gold)';
-    loadingText.style.fontSize = '0.9rem';
+    document.body.appendChild(instructionBox);
 
-    const img = document.createElement('img');
-    img.style.display = 'none'; // Hide until loaded
-    img.style.maxWidth = '100%';
-    img.style.maxHeight = '60vh';
-    img.style.borderRadius = '12px';
-    img.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
-    img.style.objectFit = 'contain';
+    // Make sure score text stays gold
+    els.totalScore.style.color = '#FFC600';
 
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const url = URL.createObjectURL(blob);
-        img.src = url;
-        img.onload = () => {
-          loadingText.style.display = 'none';
-          img.style.display = 'block';
-        };
-      } else {
-        loadingText.textContent = 'Failed to load image. Please try again.';
-      }
-    }, 'image/png');
-
-    const btnClose = document.createElement('button');
-    btnClose.className = 'btn-primary';
-    btnClose.textContent = 'Done';
-    btnClose.style.marginTop = '30px';
-    btnClose.style.width = '100%';
-    btnClose.style.maxWidth = '300px';
-    btnClose.onclick = () => overlay.remove();
-
-    overlay.onclick = (e) => {
-      if (e.target === overlay) overlay.remove();
+    document.getElementById('btn-exit-screenshot').onclick = () => {
+      instructionBox.remove();
+      summaryButtons.style.display = originalDisplay;
+      els.totalScore.style.color = '';
     };
-
-    overlay.appendChild(title);
-    overlay.appendChild(subtitle);
-    imgContainer.appendChild(loadingText);
-    imgContainer.appendChild(img);
-    overlay.appendChild(imgContainer);
-    overlay.appendChild(btnClose);
-
-    document.body.appendChild(overlay);
   } else {
+    // Standard browser download
     const link = document.createElement('a');
     link.download = 'drexelguessr-score.png';
     link.href = canvas.toDataURL('image/png');
