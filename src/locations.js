@@ -437,6 +437,54 @@ export const LOCATIONS = [
     type: "indoor",
   },
 
+  {
+    lat: 39.9526631,
+    lng: -75.1833298,
+    heading: 226.98,
+    pitch: -6.32,
+    panoId: "CAoSFkNJSE0wb2dLRUlDQWdJQ0UyZTdSWXc.",
+    name: "Cira Green",
+    hint: "",
+    type: "indoor",
+  },
+  {
+    lat: 39.9569657,
+    lng: -75.1940057,
+    heading: 319.91,
+    pitch: 15.33,
+    panoId: "ssHT8_xvhhA1Iphru9FqYQ",
+    name: "Health Sciences Building",
+    hint: "",
+  },
+  {
+    lat: 39.9570952,
+    lng: -75.1710685,
+    heading: 304.45,
+    pitch: -0.11,
+    panoId: "CAoSFkNJSE0wb2dLRUlDQWdJQ2trdGUxWkE.",
+    name: "Academy of Natural Sciences",
+    hint: "",
+    type: "indoor",
+  },
+  {
+    lat: 39.965847736528474,
+    lng: -75.18129173072083,
+    heading: 307.83,
+    pitch: 16.71,
+    panoId: "CAoSFkNJSE0wb2dLRUlDQWdJQ2U1OTN0SUE.",
+    name: "Philadelphia Museum of Art",
+    hint: "",
+    type: "indoor",
+  },
+  {
+    lat: 39.9604158,
+    lng: -75.1891465,
+    heading: 349.11,
+    pitch: 8.89,
+    panoId: "ultyjjq4OFBlsvvGrSnxdQ",
+    name: "D.P. Dough",
+    hint: "Open late",
+  }
 ];
 
 /**

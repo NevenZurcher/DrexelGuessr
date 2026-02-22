@@ -6,7 +6,8 @@ import { haversineDistance } from './maps.js';
 
 const ROUNDS_PER_GAME = 5;
 const MAX_SCORE_PER_ROUND = 5000;
-const DISTANCE_DECAY = 150; // meters — how quickly score drops with distance
+const DISTANCE_DECAY_OUTDOOR = 180; // meters - slightly relaxed from original 150
+const DISTANCE_DECAY_INDOOR = 400;  // meters - still forgiving but less than 600
 const TOTAL_TIME = 60;     // seconds per round
 const GRACE_PERIOD = 10;   // seconds before time penalty kicks in
 
@@ -69,7 +70,8 @@ export class GameState {
             distance = haversineDistance(guessPos, actualPos);
 
             // Distance score: exponential decay (more relaxed)
-            const distanceScore = MAX_SCORE_PER_ROUND * Math.exp(-distance / DISTANCE_DECAY);
+            const decay = location.type === 'indoor' ? DISTANCE_DECAY_INDOOR : DISTANCE_DECAY_OUTDOOR;
+            const distanceScore = MAX_SCORE_PER_ROUND * Math.exp(-distance / decay);
 
             // Time multiplier: first 10s are free, then linearly decreases
             const effectiveTimeWindow = TOTAL_TIME - GRACE_PERIOD; // 50s
@@ -104,8 +106,8 @@ export class GameState {
         if (pct >= 0.95) return { emoji: '🐉', title: 'True Dragon' };
         if (pct >= 0.80) return { emoji: '🎓', title: "Mario's Best Friend" };
         if (pct >= 0.60) return { emoji: '🏗️', title: 'Co-op Legend' };
-        if (pct >= 0.40) return { emoji: '🏛️', title: 'Main Building Regular' };
-        if (pct >= 0.20) return { emoji: '🏔️', title: 'Summit Dweller' };
+        if (pct >= 0.40) return { emoji: '🏛️', title: 'Library Merchant' };
+        if (pct >= 0.20) return { emoji: '🏔️', title: 'Dorm Dweller' };
         return { emoji: '😅', title: 'Lost Freshman' };
     }
 }

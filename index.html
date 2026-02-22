@@ -178,6 +178,15 @@
               Leaderboard
             </h2>
           </div>
+          <div class="leaderboard-tabs">
+            <button class="lb-tab" data-period="daily">Daily</button>
+            <button class="lb-tab" data-period="weekly">Weekly</button>
+            <button class="lb-tab active" data-period="all-time">All-Time</button>
+          </div>
+          <div id="leaderboard-countdown" class="leaderboard-countdown" style="display: none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span id="countdown-text">Resets in --:--:--</span>
+          </div>
           <div class="leaderboard-table-wrapper">
             <table class="leaderboard-table">
               <thead>

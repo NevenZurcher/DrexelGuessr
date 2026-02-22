@@ -14,7 +14,14 @@ import {
   checkStreetViewCoverage,
 } from './maps.js';
 import { signInWithGoogle, signInWithEmail, signUpWithEmail, signOutUser, onAuthChange, getCurrentUser, isWebView } from './auth.js';
-import { submitScore, getTopScores } from './leaderboard.js';
+import {
+  submitScore,
+  getTopScores,
+  getDailyCollectionName,
+  getWeeklyCollectionName,
+  getTimeUntilDailyReset,
+  getTimeUntilWeeklyReset
+} from './leaderboard.js';
 import { inject } from '@vercel/analytics';
 import html2canvas from 'html2canvas';
 
@@ -36,6 +43,8 @@ let isSignUpMode = false;
 let isProcessing = false;
 let leaderboardLastVisible = null;
 let isFullLeaderboard = false;
+let currentLeaderboardPeriod = 'all-time';
+let leaderboardCountdownInterval = null;
 
 // ── Global Error Handling ──────────────────────────────
 window.addEventListener('error', (event) => {
@@ -135,6 +144,8 @@ const els = {
   btnLbSeeAll: document.getElementById('btn-lb-see-all'),
   btnLbLoadMore: document.getElementById('btn-lb-load-more'),
   btnLbBack: document.getElementById('btn-lb-back'),
+  leaderboardCountdown: document.getElementById('leaderboard-countdown'),
+  countdownText: document.getElementById('countdown-text'),
   // Modal
   modalExit: document.getElementById('modal-exit'),
   btnCancelExit: document.getElementById('btn-cancel-exit'),
@@ -632,7 +643,7 @@ async function showSummary() {
     try {
       const result = await submitScore(user, game.totalScore, game.rounds);
       if (result.updated) {
-        showHighScoreToast();
+        showHighScoreToast(result.updatedPeriods);
       }
     } catch (err) {
       console.error('Failed to submit score:', err.message);
@@ -641,10 +652,16 @@ async function showSummary() {
   }
 }
 
-function showHighScoreToast() {
+function showHighScoreToast(periods = []) {
   const toast = document.createElement('div');
   toast.className = 'highscore-toast';
-  toast.innerHTML = '<span>🏆</span> New High Score!';
+
+  let title = 'New High Score!';
+  if (periods.length === 1 && periods[0] === 'daily') title = 'New Daily High Score!';
+  else if (periods.length === 1 && periods[0] === 'weekly') title = 'New Weekly High Score!';
+  else if (periods.includes('all-time')) title = 'New All-Time High Score!';
+
+  toast.innerHTML = `<span>🏆</span> ${title}`;
   els.summaryRating.parentElement.appendChild(toast);
 
   // Trigger reflow
@@ -843,13 +860,17 @@ function renderScoresToHtml(scores, currentUser, startRank = 1) {
       const rank = startRank + i;
       const rankClass = rank <= 3 && !isFullLeaderboard ? ` rank-${rank}` : rank <= 3 ? ` rank-top` : '';
       const isCurrentUser = currentUser && entry.uid === currentUser.uid;
-      const rowClass = isCurrentUser ? ' class="lb-current-user"' : '';
+      const delay = Math.min(i * 0.04, 0.4).toFixed(3);
+      const rowAttrs = isCurrentUser
+        ? ` class="lb-current-user" style="animation-delay: ${delay}s"`
+        : ` style="animation-delay: ${delay}s"`;
+
       const avatar = entry.photoURL
         ? `<img src="${entry.photoURL}" alt="" referrerpolicy="no-referrer" />`
         : `<div style="width:28px;height:28px;border-radius:50%;background:var(--surface);"></div>`;
 
       return `
-        <tr${rowClass}>
+        <tr${rowAttrs}>
           <td class="lb-rank${rankClass}">${rank}</td>
           <td><div class="lb-player">${avatar}<span class="lb-player-name">${entry.displayName}</span></div></td>
           <td class="lb-score">${entry.score.toLocaleString()}</td>
@@ -867,8 +888,14 @@ async function showLeaderboard() {
   isFullLeaderboard = false;
   leaderboardLastVisible = null;
 
+  updateLeaderboardCountdownUI();
+
+  let collectionName = 'leaderboard';
+  if (currentLeaderboardPeriod === 'daily') collectionName = getDailyCollectionName();
+  else if (currentLeaderboardPeriod === 'weekly') collectionName = getWeeklyCollectionName();
+
   try {
-    const { scores, lastDoc } = await getTopScores(10);
+    const { scores, lastDoc } = await getTopScores(collectionName, 10);
     leaderboardLastVisible = lastDoc;
     const currentUser = getCurrentUser();
 
@@ -901,8 +928,12 @@ async function showFullLeaderboard(loadMore = false) {
     els.btnLbLoadMore.querySelector('span').textContent = 'Loading...';
   }
 
+  let collectionName = 'leaderboard';
+  if (currentLeaderboardPeriod === 'daily') collectionName = getDailyCollectionName();
+  else if (currentLeaderboardPeriod === 'weekly') collectionName = getWeeklyCollectionName();
+
   try {
-    const { scores, lastDoc } = await getTopScores(100, leaderboardLastVisible);
+    const { scores, lastDoc } = await getTopScores(collectionName, 100, leaderboardLastVisible);
     const currentUser = getCurrentUser();
 
     if (!loadMore && scores.length === 0) {
@@ -1017,6 +1048,68 @@ els.btnLbPlay.addEventListener('click', startGame);
 els.btnLbSeeAll.addEventListener('click', () => showFullLeaderboard(false));
 els.btnLbLoadMore.addEventListener('click', () => showFullLeaderboard(true));
 els.btnLbBack.addEventListener('click', () => showScreen('start'));
+
+// Leaderboard Tabs
+document.querySelectorAll('.lb-tab').forEach(tab => {
+  tab.addEventListener('click', (e) => {
+    document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
+    const target = e.currentTarget;
+    target.classList.add('active');
+    currentLeaderboardPeriod = target.dataset.period;
+    showLeaderboard();
+  });
+});
+
+// ── Leaderboard Countdown ────────────────────────────────
+function formatCountdownTime(ms) {
+  if (ms <= 0) return '00:00:00';
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 24) {
+    const days = Math.floor(hours / 24);
+    const textHours = hours % 24;
+    return `${days}d ${textHours}h ${minutes}m`;
+  }
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+function updateLeaderboardCountdownUI() {
+  if (leaderboardCountdownInterval) {
+    clearInterval(leaderboardCountdownInterval);
+  }
+
+  if (currentLeaderboardPeriod === 'all-time') {
+    els.leaderboardCountdown.style.display = 'none';
+    return;
+  }
+
+  els.leaderboardCountdown.style.display = 'flex';
+
+  const tick = () => {
+    let remainingMs = 0;
+    if (currentLeaderboardPeriod === 'daily') {
+      remainingMs = getTimeUntilDailyReset();
+    } else if (currentLeaderboardPeriod === 'weekly') {
+      remainingMs = getTimeUntilWeeklyReset();
+    }
+
+    els.countdownText.textContent = `Resets in ${formatCountdownTime(remainingMs)}`;
+
+    // Auto-refresh the leaderboard when the countdown naturally hits zero while viewing it
+    if (remainingMs <= 0 && els.leaderboardCountdown.style.display === 'flex') {
+      clearInterval(leaderboardCountdownInterval);
+      els.countdownText.textContent = 'Resetting...';
+      setTimeout(() => showLeaderboard(), 2000);
+    }
+  };
+
+  tick(); // run immediately once
+  leaderboardCountdownInterval = setInterval(tick, 1000);
+}
 
 // Modal
 els.btnCancelExit.addEventListener('click', cancelExit);

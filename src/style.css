@@ -602,7 +602,6 @@ body {
 
 .leaderboard-header {
   padding: 24px 28px 16px;
-  border-bottom: 1px solid var(--border);
 }
 
 .leaderboard-title {
@@ -613,6 +612,61 @@ body {
   font-size: 1.4rem;
   font-weight: 700;
   color: var(--text);
+}
+
+.leaderboard-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 28px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.leaderboard-countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0;
+  background: rgba(7, 41, 77, 0.4);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: 'Space Grotesk', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.leaderboard-countdown svg {
+  color: var(--gold);
+  opacity: 0.8;
+}
+
+.lb-tab {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+  text-align: center;
+}
+
+.lb-tab:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+  border-color: var(--border-bright);
+}
+
+.lb-tab.active {
+  background: var(--bg-glass);
+  border-color: var(--gold-dark);
+  color: var(--gold);
+  box-shadow: inset 0 0 10px rgba(255, 198, 0, 0.05);
 }
 
 .leaderboard-table-wrapper {
@@ -628,6 +682,7 @@ body {
 .leaderboard-table th {
   position: sticky;
   top: 0;
+  z-index: 2;
   background: var(--surface);
   padding: 10px 16px;
   font-size: 0.72rem;
@@ -653,8 +708,26 @@ body {
   font-size: 0.9rem;
 }
 
+@keyframes lbRowEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .leaderboard-table tbody tr {
   transition: background 0.2s var(--ease);
+  animation: lbRowEnter 0.4s var(--ease) both;
+}
+
+.leaderboard-table tbody tr.lb-loading,
+.leaderboard-table tbody tr.lb-empty {
+  animation: none;
 }
 
 .leaderboard-table tbody tr:hover {
